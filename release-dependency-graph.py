@@ -63,7 +63,7 @@ class JiraSearch(object):
 
 
 def build_graph_data(start_issue_key, jira, excludes, show_directions, directions, includes, ignore_closed, ignore_epic,
-                     ignore_subtasks, traverse, ignored_status):
+                     ignore_subtasks, traverse, ignored_status, ignored_project):
     """ Given a starting image key and the issue-fetching function build up the GraphViz data representing relationships
         between issues. This will consider both subtasks and issue links.
     """
@@ -83,10 +83,10 @@ def build_graph_data(start_issue_key, jira, excludes, show_directions, direction
         status = fields['status']
         if islink:
             other_issue = jira.get('/issue/%s' % issue_key, params={'fields': jira.fields}).json()
-            fix_version = ''.join(map(lambda v: v['name'], other_issue['fields']['fixVersions']))
+            fix_version = ','.join(map(lambda v: v['name'], other_issue['fields']['fixVersions']))
             project = other_issue['fields']["project"]["name"]
         else:
-            fix_version = ''.join(map(lambda v: v['name'], fields['fixVersions']))
+            fix_version = ','.join(map(lambda v: v['name'], fields['fixVersions']))
             project = fields["project"]["name"]
 
         if islink:
@@ -129,6 +129,11 @@ def build_graph_data(start_issue_key, jira, excludes, show_directions, direction
 
         if includes not in linked_issue_key:
             return
+
+        for project in ignored_project:
+            if linked_issue_key.startswith(project):
+                log('Skipping ' + issue_key + ' - project is ignored')
+                return
 
         if link_name in excludes:
             return linked_issue_key, None
@@ -243,12 +248,14 @@ def parse_args():
     parser.add_argument('-l', '--local', action='store_true', default=False, help='Render graphviz code to stdout')
     parser.add_argument('-e', '--ignore-epic', action='store_true', default=False,
                         help='Don''t follow an Epic into it''s children issues')
-    parser.add_argument('-x', '--exclude-link', dest='excludes', default=['Duplicate'], action='append',
+    parser.add_argument('-x', '--exclude-link', dest='excludes', default=['Duplicate', 'Relates'], action='append',
                         help='Exclude link type(s)')
     parser.add_argument('-ic', '--ignore-closed', dest='closed', action='store_true', default=False,
                         help='Ignore closed issues')
     parser.add_argument('-is', '--ignore-status', dest='ignored_status', default=['Invalid'],
                         help='Ignore certain statuses')
+    parser.add_argument('-ip', '--ignore-project', dest='ignored_project', default=['LQQC', 'LQCMN'],
+                        help='Ignore certain projects')
     parser.add_argument('-i', '--issue-include', dest='includes', default='', help='Include issue keys')
     parser.add_argument('-s', '--show-directions', dest='show_directions', default=['inward', 'outward'],
                         help='which directions to show (inward, outward)')
@@ -298,11 +305,11 @@ def main():
 
     jql = 'project = %s and fixVersion in (%s)' % (options.project, options.version)
     issues = map(lambda i: i["key"], jira.query(jql))
-    log(issues)
+    
     for issue in issues:
         graph = graph + build_graph_data(issue, jira, options.excludes, options.show_directions, options.directions,
                                          options.includes, options.closed, options.ignore_epic, options.ignore_subtasks,
-                                         options.traverse, options.ignored_status)
+                                         options.traverse, options.ignored_status, options.ignored_project)
 
     if options.local:
         print_graph(filter_duplicates(graph), options.node_shape)
