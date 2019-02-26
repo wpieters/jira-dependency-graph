@@ -120,11 +120,11 @@ def build_graph_data(start_issue_key, jira, excludes, show_directions, direction
                 return
 
         if ('inwardIssue' in link) and link['inwardIssue']['fields']['status']['name'] in ignored_status:
-            log('Skipping ' + issue_key + ' - status is ignored')
+            log('Skipping ' + linked_issue_key + ' - status is ignored')
             return
 
         if ('outwardIssue' in link) and link['outwardIssue']['fields']['status']['name'] in ignored_status:
-            log('Skipping ' + issue_key + ' - status is ignored')
+            log('Skipping ' + linked_issue_key + ' - status is ignored')
             return
 
         if includes not in linked_issue_key:
@@ -132,7 +132,7 @@ def build_graph_data(start_issue_key, jira, excludes, show_directions, direction
 
         for project in ignored_project:
             if linked_issue_key.startswith(project):
-                log('Skipping ' + issue_key + ' - project is ignored')
+                log('Skipping ' + linked_issue_key + ' - project is ignored')
                 return
 
         if link_name in excludes:
@@ -305,7 +305,7 @@ def main():
 
     jql = 'project = %s and fixVersion in (%s)' % (options.project, options.version)
     issues = map(lambda i: i["key"], jira.query(jql))
-    
+
     for issue in issues:
         graph = graph + build_graph_data(issue, jira, options.excludes, options.show_directions, options.directions,
                                          options.includes, options.closed, options.ignore_epic, options.ignore_subtasks,
