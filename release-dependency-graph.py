@@ -29,7 +29,7 @@ class JiraSearch(object):
             "Authorization": "Basic d3luYW5kQGhlYWx0aHF0ZWNoLmNvbTp4MHVFaTRxSEdBWFRZeDQwOHRrRkM4NUM=",
             "Content-Type": "application/json"
         }
-        self.fields = ','.join(['key', 'summary', 'status', 'issuetype', 'issuelinks', 'subtasks', 'fixVersions'])
+        self.fields = ','.join(['key', 'summary', 'status', 'issuetype', 'issuelinks', 'subtasks', 'fixVersions', 'project'])
 
     def get(self, uri, params={}):
         url = self.__base_url + uri
@@ -57,29 +57,25 @@ def main(args):
 
     issues = response["issues"]
 
-    print 'Version %s in %s' % (args.version, args.project)
+    print '%s-%s' % (args.project, args.version)
 
     for issue in issues:
         # print issue["key"]
         response = jira.get_issue(issue["key"])
         if 'issuelinks' in response["fields"]:
             for other_link in response["fields"]['issuelinks']:
+                if other_link["type"]["name"] == "Duplicate":
+                    continue
                 if 'outwardIssue' in other_link:
                     print "%s" % (other_link["type"]["outward"])
                     other_issue = jira.get_issue(other_link["outwardIssue"]["key"])
-                    print "versions"
                     for version in other_issue["fields"]["fixVersions"]:
-                        full_version = jira.get('version/%s' % version["id"])
-                        other_project = jira.get('project/%s' % full_version["projectId"])
-                        print "%s in project %s" % (version["name"], other_project["key"])
+                        print "%s-%s" % (other_issue["fields"]["project"]["key"], version["name"])
                 elif 'inwardIssue' in other_link:
                     print "%s" % (other_link["type"]["inward"])
                     other_issue = jira.get_issue(other_link["inwardIssue"]["key"])
-                    print "versions"
                     for version in other_issue["fields"]["fixVersions"]:
-                        full_version = jira.get('version/%s' % version["id"])
-                        other_project = jira.get('project/%s' % full_version["projectId"])
-                        print "%s in project %s" % (version["name"], other_project["key"])
+                        print "%s-%s" % (other_issue["fields"]["project"]["key"], version["name"])
 
 
 if __name__ == '__main__':
